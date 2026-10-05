@@ -109,7 +109,33 @@ def health():
     #
     # Pon un timeout corto (5s): esto es un chequeo de salud, no una pregunta
     # al modelo. Si Ollama esta caido tiene que decirlo rapido.
-    return jsonify({"status": "sin escribir", "modelo": MODELO})
+    try:
+        r = requests.get(f"{OLLAMA}/api/tags", timeout=5)
+        r.raise_for_status()
+        instalados = [m["name"] for m in r.json().get("models", [])]
+    except requests.RequestException as e:
+        return jsonify({
+            "status": "degradado",
+            "modelo": MODELO,
+            "detalle": f"Ollama no responde en {OLLAMA}: {str(e)[:100]}",
+            "arreglo": "En la instancia:  ollama serve",
+        })
+
+    if MODELO not in instalados:
+        return jsonify({
+            "status": "degradado",
+            "modelo": MODELO,
+            "detalle": f"'{MODELO}' no esta instalado",
+            "instalados": instalados,
+            "arreglo": f"En la instancia:  ollama pull {MODELO}",
+        })
+
+    return jsonify({
+        "status": "ok",
+        "modelo": MODELO,
+        "max_tokens": MAX_TOKENS,
+        "keep_alive": KEEP_ALIVE,
+    })
 
 
 @app.post("/api/chat")
@@ -154,9 +180,19 @@ def chat():
     # Pasa timeout=TIMEOUT. Sin el, una peticion colgada ocupa un worker para
     # siempre y el siguiente alumno se queda esperando.
     try:
-        # Reemplaza esta linea por tu requests.post(...)
-        raise NotImplementedError(
-            "COMPLETA 2: falta la llamada a Ollama en backend/app.py"
+        r = requests.post(
+            f"{OLLAMA}/api/chat",
+            json={
+                "model": MODELO,
+                # El mensaje de sistema lo pone el servidor, no el cliente: es
+                # parte de como se comporta TU producto, y no algo que quien
+                # usa el chat deba poder cambiar desde el navegador.
+                "messages": [{"role": "system", "content": SISTEMA}] + mensajes,
+                "stream": False,
+                "options": {"num_predict": MAX_TOKENS},
+                "keep_alive": KEEP_ALIVE,
+            },
+            timeout=TIMEOUT,
         )
     except requests.Timeout:
         # COMPLETA 3 — los tres fallos, cada uno con su codigo y su arreglo.
@@ -168,20 +204,31 @@ def chat():
         #                               500 generico no ayuda a nadie
         #
         # Un error que no dice que hacer es un error que cuesta media hora.
-        raise NotImplementedError("COMPLETA 3: que pasa si tarda demasiado")
+        return jsonify({
+            "error": f"el modelo tardo mas de {TIMEOUT}s",
+            "pista": "normal en una t2.large si la pregunta pide mucho texto",
+        }), 504
     except requests.RequestException:
-        raise NotImplementedError("COMPLETA 3: que pasa si Ollama no contesta")
+        return jsonify({
+            "error": f"no pude hablar con Ollama en {OLLAMA}",
+            "arreglo": "En la instancia:  ollama serve",
+        }), 503
 
     if r.status_code != 200:
-        raise NotImplementedError("COMPLETA 3: que pasa si Ollama rechaza")
+        # Ollama dice cosas utiles cuando falla --por ejemplo que el modelo no
+        # existe-- y esconderlas tras un 500 generico no ayuda a nadie.
+        return jsonify({
+            "error": "Ollama rechazo la peticion",
+            "detalle": r.text[:200],
+        }), 502
 
     # Y la respuesta buena. Ollama devuelve {"message": {"content": "..."},
     # "eval_count": 42}. Saca de ahi el texto y el numero de tokens.
     datos = r.json()
     return jsonify({
-        "respuesta": "",   # <- el texto que devolvio el modelo
+        "respuesta": datos.get("message", {}).get("content", ""),
         "modelo": MODELO,
-        "tokens": 0,       # <- cuantos tokens genero, para que veas el costo
+        "tokens": datos.get("eval_count", 0),
     })
 
 
