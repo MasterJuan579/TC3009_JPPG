@@ -27,6 +27,7 @@ Todo eso está en **[docs/00-setup.md](docs/00-setup.md)** — quince minutos, u
 | | |
 |---|---|
 | **[docs/guia.md](docs/guia.md)** | La práctica: un producto con un modelo de lenguaje propio |
+| [docs/en-tu-maquina.md](docs/en-tu-maquina.md) | Hacerlo correr en tu Windows o tu Mac, sin la instancia |
 | `backend/` | Flask. Tres `COMPLETA` que llenas tú |
 | `frontend/` | React + TypeScript con Vite. Dos `COMPLETA` más |
 | `setup/bootstrap.sh` | Deja la instancia lista: Python, Node, Ollama y el modelo |
@@ -62,6 +63,14 @@ git add -A && git commit -m "..." && git push
 ```bash
 git pull && ./run restart && ./run salud
 ```
+
+**¿Publiqué material nuevo y lo quieres en tu repositorio?** Bájalo con **Code → Download
+ZIP**, copia a tu proyecto las carpetas del curso —`frontend/`, `docs/`, `setup/` y `run`,
+**nunca `backend/`**, que es tuyo— y haz `add`, `commit` y `push`.
+
+Paso a paso, con la comprobación de que no te llevas tu código por delante y la forma
+equivalente con git, en **[docs/00-setup.md → Traer material nuevo del
+curso](docs/00-setup.md#traer-material-nuevo-del-curso)**.
 
 ---
 
