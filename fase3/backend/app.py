@@ -129,9 +129,16 @@ def chat():
         #   4. guarda la pregunta con db.guardar_mensaje(id, "user", texto)
         #
         # Deja el historial en una variable llamada 'historial'.
-        raise NotImplementedError(
-            "COMPLETA 3: falta enganchar la base en backend/app.py"
-        )
+        if conversacion_id is None:
+            conversacion_id = db.crear_conversacion(texto, MODELO)
+        elif not db.existe(conversacion_id):
+            return jsonify({
+                "error": f"no existe la conversacion {conversacion_id}",
+                "arreglo": "Manda la peticion sin conversacion_id para empezar una nueva",
+            }), 404
+
+        historial = db.leer_mensajes(conversacion_id)
+        db.guardar_mensaje(conversacion_id, "user", texto)
     except NotImplementedError:
         raise
     except Exception as e:  # noqa: BLE001
